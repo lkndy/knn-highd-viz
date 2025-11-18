@@ -86,8 +86,9 @@ void refine_hierarchical(std::vector<graph::Level>& hierarchy,
         graph::Level& level = hierarchy[level_idx];
         
         if (level_idx == num_levels - 1) {
-            // Coarsest level: initialize with random noise
-            random_init_embedding(level.Y, level.num_vertices(), dim, 0.0001f, seed);
+            // Coarsest level: initialize with random noise (small σ per details.md:177)
+            // Use slightly larger sigma to ensure better initial separation
+            random_init_embedding(level.Y, level.num_vertices(), dim, 0.1f, seed);
         } else {
             // Fine level: prolongate from the next coarser level (level_idx+1)
             // level_idx+1 is coarser than level_idx
@@ -95,16 +96,31 @@ void refine_hierarchical(std::vector<graph::Level>& hierarchy,
         }
         
         // Determine epochs for this level
-        uint32_t epochs = (level_idx == 0) ? epochs_fine : epochs_coarse;
-        
-        // Adjust gamma for this level (higher on coarse, lower on fine)
-        OptimConfig level_cfg = base_cfg;
-        if (num_levels > 1) {
-            float gamma_scale = 1.0f + static_cast<float>(num_levels - 1 - level_idx) * 0.5f;
-            level_cfg.gamma = base_cfg.gamma * gamma_scale;
+        // details.md line 725: T_l = ceil(500 * |V^l|) per level
+        // If epochs_coarse/fine are provided (non-zero), use them as multipliers
+        // Otherwise, use the exact specification: T_l = ceil(500 * |V^l|)
+        uint32_t epochs;
+        if (epochs_coarse == 0 && epochs_fine == 0) {
+            // Use exact specification from details.md
+            epochs = static_cast<uint32_t>(std::ceil(500.0 * level.num_vertices()));
+        } else {
+            // Use provided multipliers (for backward compatibility or custom scaling)
+            float multiplier = (level_idx == 0) ? static_cast<float>(epochs_fine) : static_cast<float>(epochs_coarse);
+            epochs = static_cast<uint32_t>(std::ceil(multiplier * level.num_vertices()));
         }
         
-        // Optimize this level
+        // Set gamma per paper: γ=1 (finest), γ=7 (coarse)
+        // details.md Section 6: "For the finest level: early exaggeration by setting γ=1. For others: γ=7."
+        OptimConfig level_cfg = base_cfg;
+        if (level_idx == 0) {
+            // Finest level: γ=1
+            level_cfg.gamma = 1.0f;
+        } else {
+            // Coarse levels: γ=7
+            level_cfg.gamma = 7.0f;
+        }
+        
+        // Optimize this level (always with gradient sharing, per paper Section 3.4)
         optimize_level(level, level_cfg, epochs, num_threads, seed + level_idx);
     }
 }

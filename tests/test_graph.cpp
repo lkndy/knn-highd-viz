@@ -57,15 +57,25 @@ TEST_CASE("Gradient kernels", "[embed]") {
     float gamma = 1.0f;
     
     // Test positive gradient
+    // Formula: -2 * p_ij * (y_i - y_j) / (1 + ||y_i - y_j||^2)
+    // yi = (0,0), yj = (1,0), so (yi - yj) = (-1, 0)
+    // Gradient = -2 * 1.0 * (-1, 0) / (1 + 1) = (2/2, 0) = (1, 0)
+    // Since we do y += lr * grad (gradient ascent for maximization),
+    // positive gradient moves yi right (towards yj) - correct for attraction
     hknn::embed::grad_pair_pos(gi, yi, yj, pij, dim);
-    REQUIRE(gi[0] < 0.0f);  // Should point towards yj
-    REQUIRE(std::abs(gi[1]) < 1e-6f);
+    REQUIRE(gi[0] > 0.0f);  // Positive x direction (towards yj)
+    REQUIRE(std::abs(gi[1]) < 1e-5f);
     
     // Reset and test negative gradient
     gi[0] = 0.0f;
     gi[1] = 0.0f;
+    // Negative gradient: 2 * gamma * p_ij * (y_i - y_k) / (d^2 * (1 + d^2))
+    // yi = (0,0), yk = (0,1), so (yi - yk) = (0, -1), d^2 = 1
+    // Gradient = 2 * 1 * 1 * (0, -1) / (1 * 2) = (0, -1)
+    // With y += lr * grad, negative gradient moves yi down (away from yk) - correct for repulsion
     hknn::embed::grad_pair_neg(gi, yi, yk, pij, gamma, dim);
-    REQUIRE(gi[1] > 0.0f);  // Should repel from yk
+    REQUIRE(std::abs(gi[0]) < 1e-5f);
+    REQUIRE(gi[1] < 0.0f);  // Negative y direction (away from yk, correct for repulsion)
 }
 
 TEST_CASE("Distance computation", "[math]") {

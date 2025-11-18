@@ -64,7 +64,7 @@ std::vector<uint32_t> get_group_members(const graph::Level& level, uint32_t grou
 
 // SGD update for a single group with gradient sharing
 void sgd_group_update(graph::Level& level,
-                     const graph::CSR& graph,
+                     const graph::CSR& /* graph */,
                      uint32_t group_id,
                      const OptimConfig& cfg,
                      EdgeSampler& edge_sampler,
@@ -117,6 +117,8 @@ void sgd_group_update(graph::Level& level,
     clip_gradient(gi, cfg.dim, cfg.max_grad_norm);
     
     // Fan-out: apply gradient to all group members
+    // details.md Section 11.2 line 681: y[u] = y[u] - lr * gy
+    // Apply gradient exactly as specified (no variation)
     for (uint32_t u : members) {
         for (int t = 0; t < cfg.dim; ++t) {
             level.Y[u * cfg.dim + t] -= cfg.lr * gi[t];

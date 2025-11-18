@@ -2,7 +2,10 @@
 
 #include <string>
 #include <cstdint>
-#include <boost/program_options.hpp>
+#include <iostream>
+#include <stdexcept>
+#include <map>
+#include <sstream>
 
 namespace hknn {
 namespace cli {
@@ -24,10 +27,12 @@ struct Config {
     float rho = 0.8f;
     
     // Optimization
-    uint32_t epochs_coarse = 4;
-    uint32_t epochs_fine = 8;
+    // Paper: "T_l = ceil(500 * |V^l|)" per level (details.md line 725)
+    // Defaults: 0 means use exact specification, non-zero values are multipliers
+    uint32_t epochs_coarse = 0;  // 0 = use T_l = ceil(500 * |V^l|)
+    uint32_t epochs_fine = 0;     // 0 = use T_l = ceil(500 * |V^l|)
     uint32_t mneg = 5;
-    float gamma = 5.0f;
+    float gamma = 7.0f;  // Default for coarse (finest uses 1.0, set in hierarchy.hpp)
     float lr = 200.0f;
     std::string schedule = "poly:beta=0.5";
     
@@ -39,57 +44,110 @@ struct Config {
     uint32_t num_threads = 0;  // 0 = auto-detect
 };
 
+// Simple argument parser
 Config parse_args(int argc, char* argv[]) {
-    namespace po = boost::program_options;
-    
     Config cfg;
-    po::options_description desc("Hierarchical K-NN Embedding Options");
+    std::map<std::string, std::string> args;
     
-    desc.add_options()
-        ("help,h", "Print help message")
-        ("input", po::value<std::string>(&cfg.input_path)->required(), "Input data file (.fvecs or raw float32)")
-        ("N", po::value<uint32_t>(&cfg.N)->required(), "Number of data points")
-        ("D", po::value<uint32_t>(&cfg.D)->required(), "Dimension of data points")
-        ("out", po::value<std::string>(&cfg.output_path)->required(), "Output embedding file (base path)")
-        
-        ("K", po::value<uint32_t>(&cfg.K)->default_value(100), "Number of nearest neighbors")
-        ("perplexity", po::value<float>(&cfg.perplexity)->default_value(50.0f), "Target perplexity for p_ij")
-        
-        ("levels_auto", po::value<bool>(&cfg.levels_auto)->default_value(true), "Auto-build hierarchy levels")
-        ("kml", po::value<uint32_t>(&cfg.k_ml)->default_value(3), "Grouping parameter for coarsening")
-        ("rho", po::value<float>(&cfg.rho)->default_value(0.8f), "Minimum shrink ratio per level")
-        
-        ("epochs_coarse", po::value<uint32_t>(&cfg.epochs_coarse)->default_value(4), "Epochs per coarse level")
-        ("epochs_fine", po::value<uint32_t>(&cfg.epochs_fine)->default_value(8), "Epochs for finest level")
-        ("mneg", po::value<uint32_t>(&cfg.mneg)->default_value(5), "Number of negative samples")
-        ("gamma", po::value<float>(&cfg.gamma)->default_value(5.0f), "Negative sampling balance")
-        ("lr", po::value<float>(&cfg.lr)->default_value(200.0f), "Learning rate")
-        ("schedule", po::value<std::string>(&cfg.schedule)->default_value("poly:beta=0.5"), "Learning rate schedule")
-        
-        ("dim", po::value<int>(&cfg.dim)->default_value(2), "Embedding dimension (2 or 3)")
-        ("seed", po::value<uint64_t>(&cfg.seed)->default_value(123), "Random seed")
-        
-        ("threads", po::value<uint32_t>(&cfg.num_threads)->default_value(0), "Number of threads (0 = auto)");
-    
-    po::variables_map vm;
-    try {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        
-        if (vm.count("help")) {
-            std::cout << desc << "\n";
+    // Parse arguments
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--help" || arg == "-h") {
+            std::cout << "Hierarchical K-NN Embedding Options:\n";
+            std::cout << "  --input <path>        Input data file (.fvecs or raw float32)\n";
+            std::cout << "  --N <num>             Number of data points\n";
+            std::cout << "  --D <num>             Dimension of data points\n";
+            std::cout << "  --out <path>          Output embedding file (base path)\n";
+            std::cout << "  --K <num>             Number of nearest neighbors (default: 100)\n";
+            std::cout << "  --perplexity <num>    Target perplexity for p_ij (default: 50.0)\n";
+            std::cout << "  --kml <num>           Grouping parameter for coarsening (default: 3)\n";
+            std::cout << "  --rho <num>           Minimum shrink ratio per level (default: 0.8)\n";
+            std::cout << "  --epochs_coarse <num> Multiplier for coarse level epochs (default: 0 = use T_l = ceil(500 * |V^l|))\n";
+            std::cout << "  --epochs_fine <num>   Multiplier for finest level epochs (default: 0 = use T_l = ceil(500 * |V^l|))\n";
+            std::cout << "  --mneg <num>          Number of negative samples (default: 5)\n";
+            std::cout << "  --gamma <num>         Negative sampling balance for coarse levels (default: 7.0, finest uses 1.0)\n";
+            std::cout << "  --lr <num>            Learning rate (default: 200.0)\n";
+            std::cout << "  --dim <num>           Embedding dimension, 2 or 3 (default: 2)\n";
+            std::cout << "  --seed <num>          Random seed (default: 123)\n";
+            std::cout << "  --threads <num>       Number of threads, 0 for auto (default: 0)\n";
             std::exit(0);
         }
         
-        po::notify(vm);
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
-        std::cerr << desc << "\n";
-        std::exit(1);
+        if (arg.substr(0, 2) == "--") {
+            std::string key = arg.substr(2);
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                args[key] = argv[++i];
+            } else {
+                args[key] = "1";  // Boolean flag
+            }
+        }
+    }
+    
+    // Parse values
+    auto get_str = [&](const std::string& key, const std::string& def = "") {
+        auto it = args.find(key);
+        return (it != args.end()) ? it->second : def;
+    };
+    
+    auto get_uint = [&](const std::string& key, uint32_t def = 0) {
+        auto it = args.find(key);
+        if (it == args.end()) return def;
+        return static_cast<uint32_t>(std::stoul(it->second));
+    };
+    
+    auto get_float = [&](const std::string& key, float def = 0.0f) {
+        auto it = args.find(key);
+        if (it == args.end()) return def;
+        return std::stof(it->second);
+    };
+    
+    auto get_int = [&](const std::string& key, int def = 0) {
+        auto it = args.find(key);
+        if (it == args.end()) return def;
+        return std::stoi(it->second);
+    };
+    
+    auto get_uint64 = [&](const std::string& key, uint64_t def = 0) {
+        auto it = args.find(key);
+        if (it == args.end()) return def;
+        return static_cast<uint64_t>(std::stoull(it->second));
+    };
+    
+    cfg.input_path = get_str("input");
+    cfg.N = get_uint("N");
+    cfg.D = get_uint("D");
+    cfg.output_path = get_str("out");
+    cfg.K = get_uint("K", 100);
+    cfg.perplexity = get_float("perplexity", 50.0f);
+    cfg.k_ml = get_uint("kml", 3);
+    cfg.rho = get_float("rho", 0.8f);
+    cfg.epochs_coarse = get_uint("epochs_coarse", 0);  // 0 = use exact spec from details.md
+    cfg.epochs_fine = get_uint("epochs_fine", 0);       // 0 = use exact spec from details.md
+    cfg.mneg = get_uint("mneg", 5);
+    cfg.gamma = get_float("gamma", 7.0f);  // Default for coarse (finest uses 1.0)
+    cfg.lr = get_float("lr", 200.0f);
+    cfg.schedule = get_str("schedule", "poly:beta=0.5");
+    cfg.dim = get_int("dim", 2);
+    cfg.seed = get_uint64("seed", 123);
+    cfg.num_threads = get_uint("threads", 0);
+    
+    // Validate required arguments
+    if (cfg.input_path.empty()) {
+        throw std::runtime_error("Error: --input is required");
+    }
+    if (cfg.N == 0) {
+        throw std::runtime_error("Error: --N is required");
+    }
+    if (cfg.D == 0) {
+        throw std::runtime_error("Error: --D is required");
+    }
+    if (cfg.output_path.empty()) {
+        throw std::runtime_error("Error: --out is required");
     }
     
     // Validate dimension
     if (cfg.dim != 2 && cfg.dim != 3) {
-        throw std::runtime_error("Dimension must be 2 or 3");
+        throw std::runtime_error("Error: Dimension must be 2 or 3");
     }
     
     return cfg;
@@ -97,4 +155,3 @@ Config parse_args(int argc, char* argv[]) {
 
 } // namespace cli
 } // namespace hknn
-

@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <numeric>
 #include <climits>
-#include <boost/dynamic_bitset.hpp>
+#include <bitset>
 #include <random>
 
 namespace hknn {
@@ -55,7 +55,7 @@ Level coarsen_level(const Level& fine_level,
     std::shuffle(vertex_order.begin(), vertex_order.end(), rng);
     
     // Step 2: Greedy grouping
-    boost::dynamic_bitset<> assigned(N, false);
+    std::vector<bool> assigned(N, false);
     std::vector<uint32_t> groups;  // Group representatives (vertices in coarse level)
     coarse_level.parent.resize(N, UINT32_MAX);
     coarse_level.gid.resize(N, UINT32_MAX);
@@ -102,7 +102,7 @@ Level coarsen_level(const Level& fine_level,
     // Build adjacency for coarse graph
     std::vector<std::vector<uint32_t>> coarse_adj(N_coarse);
     std::vector<std::vector<float>> coarse_weights(N_coarse);
-    boost::dynamic_bitset<> coarse_edge_exists(N_coarse * N_coarse, false);
+    std::vector<bool> coarse_edge_exists(N_coarse * N_coarse, false);
     
     // Map fine vertices to coarse vertices
     std::vector<uint32_t> fine_to_coarse(N, UINT32_MAX);

@@ -5,7 +5,7 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace hknn {
 namespace io {
@@ -83,4 +83,3 @@ bool write_embedding(const std::string& base_path,
 
 } // namespace io
 } // namespace hknn
-

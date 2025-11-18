@@ -6,7 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <span>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace hknn {
 namespace io {
@@ -40,8 +40,8 @@ public:
         D_ = D;
         if (stride_ == 0) stride_ = D;
         
-        boost::filesystem::path file_path(path);
-        if (!boost::filesystem::exists(file_path)) {
+        std::filesystem::path file_path(path);
+        if (!std::filesystem::exists(file_path)) {
             return false;
         }
         
@@ -94,8 +94,8 @@ public:
         N_ = N;
         D_ = D;
         
-        boost::filesystem::path file_path(path);
-        if (!boost::filesystem::exists(file_path)) {
+        std::filesystem::path file_path(path);
+        if (!std::filesystem::exists(file_path)) {
             return false;
         }
         
@@ -156,7 +156,7 @@ public:
 
 // Factory function to create appropriate loader
 std::unique_ptr<DataLoader> create_loader(const std::string& path) {
-    boost::filesystem::path file_path(path);
+    std::filesystem::path file_path(path);
     std::string ext = file_path.extension().string();
     
     if (ext == ".fvecs") {
@@ -169,4 +169,3 @@ std::unique_ptr<DataLoader> create_loader(const std::string& path) {
 
 } // namespace io
 } // namespace hknn
-

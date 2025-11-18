@@ -14,15 +14,7 @@ else()
     add_compile_options(-march=native)  # Enable SIMD optimizations
 endif()
 
-# Find Boost
-find_package(Boost REQUIRED COMPONENTS 
-    program_options 
-    filesystem 
-    random 
-    thread
-    system
-    timer
-)
+# No Boost dependencies - using STL only
 
 # Check for AVX2/AVX-512 support
 include(CheckCXXCompilerFlag)
@@ -56,6 +48,9 @@ set(HKNN_HEADERS
     include/hknn/io/writer.hpp
     include/hknn/graph/csr_graph.hpp
     include/hknn/graph/knn_bruteforce.hpp
+    include/hknn/graph/random_projection_tree.hpp
+    include/hknn/graph/nn_descent.hpp
+    include/hknn/graph/knn_approximate.hpp
     include/hknn/graph/pij.hpp
     include/hknn/graph/coarsen.hpp
     include/hknn/math/kernels.hpp
@@ -70,14 +65,8 @@ set(HKNN_HEADERS
 
 # Static library
 add_library(hknn STATIC ${HKNN_SOURCES} ${HKNN_HEADERS})
-target_link_libraries(hknn PUBLIC 
-    Boost::program_options 
-    Boost::filesystem 
-    Boost::random 
-    Boost::thread
-    Boost::system
-    Boost::timer
-)
+
+# No external libraries needed - pure STL
 target_compile_features(hknn PRIVATE cxx_std_20)
 target_include_directories(hknn PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
@@ -103,7 +92,7 @@ set(TEST_SOURCES
 )
 
 add_executable(hknn_tests ${TEST_SOURCES})
-target_link_libraries(hknn_tests PRIVATE hknn Catch2::Catch2)
+target_link_libraries(hknn_tests PRIVATE hknn Catch2::Catch2WithMain)
 target_compile_features(hknn_tests PRIVATE cxx_std_20)
 
 include(CTest)

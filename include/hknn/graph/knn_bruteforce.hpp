@@ -3,6 +3,7 @@
 #include "csr_graph.hpp"
 #include "../math/kernels.hpp"
 #include "../math/rng.hpp"
+#include "../util/thread_pool.hpp"
 #include <vector>
 #include <queue>
 #include <algorithm>
@@ -10,8 +11,6 @@
 #include <mutex>
 #include <atomic>
 #include <functional>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/asio/post.hpp>
 
 namespace hknn {
 namespace graph {
@@ -106,7 +105,7 @@ CSR build_knn_bruteforce(const float* X,
     std::vector<std::vector<float>> all_distances(N);
     
     // Thread pool
-    boost::asio::thread_pool pool(num_threads);
+    util::ThreadPool pool(num_threads);
     std::mutex mutex;
     std::atomic<uint32_t> completed(0);
     
@@ -116,7 +115,7 @@ CSR build_knn_bruteforce(const float* X,
     for (uint32_t chunk_start = 0; chunk_start < N; chunk_start += chunk_size) {
         uint32_t chunk_end = std::min(chunk_start + chunk_size, N);
         
-        boost::asio::post(pool, [&, chunk_start, chunk_end]() {
+        pool.post([&, chunk_start, chunk_end]() {
             for (uint32_t i = chunk_start; i < chunk_end; ++i) {
                 TopKSelector selector(K + 1);  // +1 to exclude self
                 

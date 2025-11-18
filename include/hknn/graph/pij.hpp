@@ -163,7 +163,6 @@ CSR compute_pij(const CSR& knn_graph,
     for (uint32_t i = 0; i < N; ++i) {
         auto nbrs = knn_graph.neighbors(i);
         const auto& p_i_given = conditional_probs[i];
-        const auto& nbr_map_i = neighbor_maps[i];
         
         for (size_t j_idx = 0; j_idx < nbrs.size(); ++j_idx) {
             uint32_t j = nbrs[j_idx];

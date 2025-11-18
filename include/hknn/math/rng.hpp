@@ -1,14 +1,11 @@
 #pragma once
 
 #include <cstdint>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/uniform_real_distribution.hpp>
+#include <random>
 
 namespace hknn {
 
-using Rng = boost::random::mt19937_64;
+using Rng = std::mt19937_64;
 
 // RNG utilities for reproducibility
 class RngManager {
@@ -29,17 +26,17 @@ public:
     
     template<typename T>
     static T uniform_int(Rng& rng, T min, T max) {
-        boost::random::uniform_int_distribution<T> dist(min, max);
+        std::uniform_int_distribution<T> dist(min, max);
         return dist(rng);
     }
     
     static float uniform_real(Rng& rng, float min = 0.0f, float max = 1.0f) {
-        boost::random::uniform_real_distribution<float> dist(min, max);
+        std::uniform_real_distribution<float> dist(min, max);
         return dist(rng);
     }
     
     static float normal(Rng& rng, float mean = 0.0f, float stddev = 1.0f) {
-        boost::random::normal_distribution<float> dist(mean, stddev);
+        std::normal_distribution<float> dist(mean, stddev);
         return dist(rng);
     }
 };

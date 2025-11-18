@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch_test_macros.hpp>
 #include "hknn/io/reader.hpp"
 #include "hknn/io/writer.hpp"

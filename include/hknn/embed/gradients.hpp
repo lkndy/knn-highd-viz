@@ -35,7 +35,6 @@ inline void grad_pair_neg(float* __restrict gi,
     }
     d2 = std::max(d2, 1e-12f);
     
-    float inv = 1.0f / (1.0f + d2);
     float denom = d2 * (1.0f + d2);
     denom = std::max(denom, 1e-18f);
     
