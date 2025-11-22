@@ -1,0 +1,8 @@
+{
+  "test_type": "K_sweep",
+  "data_path": "test_mnist.fvecs",
+  "N": 1000,
+  "D": 784,
+  "seed": 123,
+  "timestamp": "20251122_174929"
+}

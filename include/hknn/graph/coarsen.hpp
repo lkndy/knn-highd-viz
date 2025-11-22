@@ -207,6 +207,10 @@ std::vector<Level> build_hierarchy(const CSR& graph,
         // Store this parent mapping in the fine level (current_level)
         current_level.parent = coarse_level.parent;
         
+        // Also store group IDs (gid) in the fine level
+        // details.md: "gid[v]: group ID at this level (used for gradient sharing)"
+        current_level.gid = coarse_level.gid;
+        
         // Set up children mapping in coarse level (for potential future use)
         coarse_level.children.resize(coarse_level.num_vertices());
         for (uint32_t v = 0; v < current_level.num_vertices(); ++v) {

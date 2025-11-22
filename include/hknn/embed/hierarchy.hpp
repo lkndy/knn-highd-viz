@@ -70,7 +70,9 @@ void refine_hierarchical(std::vector<graph::Level>& hierarchy,
                         uint32_t epochs_coarse,
                         uint32_t epochs_fine,
                         uint32_t num_threads,
-                        uint64_t seed) {
+                        uint64_t seed,
+                        float gamma_fine = 1.0f,
+                        float gamma_coarse = 7.0f) {
     
     if (hierarchy.empty()) {
         return;
@@ -97,27 +99,29 @@ void refine_hierarchical(std::vector<graph::Level>& hierarchy,
         
         // Determine epochs for this level
         // details.md line 725: T_l = ceil(500 * |V^l|) per level
-        // If epochs_coarse/fine are provided (non-zero), use them as multipliers
-        // Otherwise, use the exact specification: T_l = ceil(500 * |V^l|)
+        // This implies T_l is the total number of *updates* (steps).
+        // Since one "epoch" in optimize_level iterates over all |V^l| groups,
+        // the number of epochs corresponds to T_l / |V^l| = 500.
+        // Thus, the multiplier (e.g. 500) is the number of epochs (passes).
         uint32_t epochs;
         if (epochs_coarse == 0 && epochs_fine == 0) {
-            // Use exact specification from details.md
-            epochs = static_cast<uint32_t>(std::ceil(500.0 * level.num_vertices()));
+            // Use exact specification from details.md (T=500 independent of N)
+            epochs = 500;
         } else {
-            // Use provided multipliers (for backward compatibility or custom scaling)
-            float multiplier = (level_idx == 0) ? static_cast<float>(epochs_fine) : static_cast<float>(epochs_coarse);
-            epochs = static_cast<uint32_t>(std::ceil(multiplier * level.num_vertices()));
+            // Use provided values as number of epochs directly
+            float val = (level_idx == 0) ? static_cast<float>(epochs_fine) : static_cast<float>(epochs_coarse);
+            epochs = static_cast<uint32_t>(std::ceil(val));
         }
         
         // Set gamma per paper: γ=1 (finest), γ=7 (coarse)
         // details.md Section 6: "For the finest level: early exaggeration by setting γ=1. For others: γ=7."
         OptimConfig level_cfg = base_cfg;
         if (level_idx == 0) {
-            // Finest level: γ=1
-            level_cfg.gamma = 1.0f;
+            // Finest level
+            level_cfg.gamma = gamma_fine;
         } else {
-            // Coarse levels: γ=7
-            level_cfg.gamma = 7.0f;
+            // Coarse levels
+            level_cfg.gamma = gamma_coarse;
         }
         
         // Optimize this level (always with gradient sharing, per paper Section 3.4)

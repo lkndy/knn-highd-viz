@@ -1,0 +1,74 @@
+======================================================================
+HKNN ALGORITHM ANALYSIS REPORT
+======================================================================
+
+OVERALL STATISTICS
+----------------------------------------------------------------------
+Total tests: 4
+Successful: 4 (100.0%)
+Failed: 0 (0.0%)
+
+PERFORMANCE METRICS
+----------------------------------------------------------------------
+Mean runtime: 851.51s
+Median runtime: 851.53s
+Min runtime: 849.49s
+Max runtime: 853.50s
+
+QUALITY METRICS
+----------------------------------------------------------------------
+KNN Preservation:
+  Mean: 8.41%
+  Median: 8.00%
+  Best: 11.76%
+  Worst: 5.88%
+
+Cluster Quality (10 clusters):
+  Mean silhouette: 0.5819
+  Best: 0.6446
+
+Coordinate Uniqueness:
+  Mean duplicate %: 78.90%
+  Best (lowest duplicates): 76.20%
+
+PARAMETER SENSITIVITY
+----------------------------------------------------------------------
+
+K:
+  30: 11.76% ± nan%
+  50: 9.02% ± nan%
+  100: 6.97% ± nan%
+  150: 5.88% ± nan%
+
+perplexity:
+  50: 8.41% ± 2.58%
+
+lr:
+  200: 8.41% ± 2.58%
+
+epochs_coarse:
+  50: 8.41% ± 2.58%
+
+epochs_fine:
+  100: 8.41% ± 2.58%
+
+mneg:
+  5: 8.41% ± 2.58%
+
+gamma:
+  7.0: 8.41% ± 2.58%
+
+BEST CONFIGURATIONS
+----------------------------------------------------------------------
+
+Top 5 by KNN Preservation:
+  K_30_0: 11.76%
+  K_50_1: 9.02%
+  K_100_2: 6.97%
+  K_150_3: 5.88%
+
+Top 5 by Cluster Quality:
+  K_100_2: 0.6446
+  K_50_1: 0.5939
+  K_150_3: 0.5602
+  K_30_0: 0.5287

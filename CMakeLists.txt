@@ -40,6 +40,7 @@ set(HKNN_SOURCES
     src/embed/sharing.cpp
     src/embed/optimizer.cpp
     src/embed/hierarchy.cpp
+    src/api.cpp
 )
 
 # Header-only modules don't need .cpp files
